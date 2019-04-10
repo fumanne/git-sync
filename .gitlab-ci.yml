@@ -1,0 +1,35 @@
+image: $CI_PIPELINE_IMAGE
+
+variables:
+  KUBE_NAMESPACE: $CI_PROJECT_NAME
+  CI_REGISTRY_IMAGE: $CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
+  BUILDARG_http_proxy: $CI_BUILDARG_HTTP_PROXY
+  BUILDARG_https_proxy: $CI_BUILDARG_HTTPS_PROXY
+  BUILDARG_no_proxy: $CI_BUILDARG_NO_PROXY
+
+stages:
+  - dockerbuild
+  - taglatest
+
+docker_build:
+  stage: dockerbuild
+  dependencies: []
+  script:
+    - command build
+  tags:
+    - k8s
+    - devops
+  only:
+    - master
+
+taglatest:
+  stage: taglatest
+  dependencies: []
+  allow_failure: false
+  script:
+    - command push
+  tags:
+    - k8s
+    - devops
+  only:
+    - master
