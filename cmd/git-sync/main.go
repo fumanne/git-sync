@@ -457,7 +457,7 @@ func addWorktreeAndSwap(ctx context.Context, gitRoot, dest, branch, rev string, 
 		//if depth != 0 {
 		//	args = append(args, "--depth", strconv.Itoa(depth))
 		//}
-		_, err := runCommand(worktreePath, "git", args...)
+		_, err := runCommand(ctx, worktreePath, *flGitCmd, args...)
 		if err != nil {
 			return err
 		}
