@@ -547,13 +547,13 @@ func syncRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot,
 		if err != nil {
 			return false, err
 		}
-		log.V(2).Infof("local hash:  %s", local)
-		log.V(2).Infof("remote hash: %s", remote)
+		log.V(0).Infof("local hash:  %s", local)
+		log.V(0).Infof("remote hash: %s", remote)
 		if local != remote {
 			log.V(0).Infof("update required")
 			hash = remote
 		} else {
-			log.V(1).Infof("no update required")
+			log.V(0).Infof("no update required")
 			return false, nil
 		}
 	}
@@ -608,7 +608,7 @@ func cmdForLog(command string, args ...string) string {
 }
 
 func runCommand(ctx context.Context, cwd, command string, args ...string) (string, error) {
-	log.V(5).Infof("run(%q): %s", cwd, cmdForLog(command, args...))
+	log.V(0).Infof("run(%q): %s", cwd, cmdForLog(command, args...))
 
 	cmd := exec.CommandContext(ctx, command, args...)
 	if cwd != "" {
