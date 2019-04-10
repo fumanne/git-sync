@@ -62,6 +62,8 @@ var flSyncTimeout = flag.Int("timeout", envInt("GIT_SYNC_TIMEOUT", 120),
 	"the max number of seconds for a complete sync")
 var flOneTime = flag.Bool("one-time", envBool("GIT_SYNC_ONE_TIME", false),
 	"exit after the initial checkout")
+var flSubmodule = flag.Bool("submodule", envBool("GIT_SYNC_SUBMODULE", false),
+	"init and update submodule")
 var flMaxSyncFailures = flag.Int("max-sync-failures", envInt("GIT_SYNC_MAX_SYNC_FAILURES", 0),
 	"the number of consecutive failures allowed before aborting (the first pull must succeed, -1 disables aborting for any number of failures after the initial sync)")
 var flChmod = flag.Int("change-permissions", envInt("GIT_SYNC_PERMISSIONS", 0),
@@ -403,7 +405,7 @@ func updateSymlink(ctx context.Context, gitRoot, link, newDir string) error {
 }
 
 // addWorktreeAndSwap creates a new worktree and calls updateSymlink to swap the symlink to point to the new worktree
-func addWorktreeAndSwap(ctx context.Context, gitRoot, dest, branch, rev string, depth int, hash string) error {
+func addWorktreeAndSwap(ctx context.Context, gitRoot, dest, branch, rev string, depth int, hash string, submodule bool) error {
 	log.V(0).Infof("syncing to %s (%s)", rev, hash)
 
 	args := []string{"fetch", "--tags"}
@@ -449,6 +451,18 @@ func addWorktreeAndSwap(ctx context.Context, gitRoot, dest, branch, rev string, 
 		return err
 	}
 	log.V(0).Infof("reset worktree %s to %s", worktreePath, hash)
+
+	if submodule {
+		args := []string{"submodule", "update", "--init"}
+		//if depth != 0 {
+		//	args = append(args, "--depth", strconv.Itoa(depth))
+		//}
+		_, err := runCommand(worktreePath, "git", args...)
+		if err != nil {
+			return err
+		}
+		log.V(0).Infof("updated submodules")
+	}
 
 	if *flChmod != 0 {
 		// set file permissions
@@ -511,7 +525,7 @@ func revIsHash(ctx context.Context, rev, gitRoot string) (bool, error) {
 
 // syncRepo syncs the branch of a given repository to the destination at the given rev.
 // returns (1) whether a change occured and (2) an error if one happened
-func syncRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot, dest string) (bool, error) {
+func syncRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot, dest string, submodule bool) (bool, error) {
 	target := path.Join(gitRoot, dest)
 	gitRepoPath := path.Join(target, ".git")
 	hash := rev
@@ -544,7 +558,7 @@ func syncRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot,
 		}
 	}
 
-	return true, addWorktreeAndSwap(ctx, gitRoot, dest, branch, rev, depth, hash)
+	return true, addWorktreeAndSwap(ctx, gitRoot, dest, branch, rev, depth, hash, submodule)
 }
 
 // getRevs returns the local and upstream hashes for rev.
