@@ -54,8 +54,8 @@ var flDepth = flag.Int("depth", envInt("GIT_SYNC_DEPTH", 0),
 
 var flRoot = flag.String("root", envString("GIT_SYNC_ROOT", envString("HOME", "")+"/git"),
 	"the root directory for git operations")
-var flDest = flag.String("dest", envString("GIT_SYNC_DEST", ""),
-	"the name at which to publish the checked-out files under --root (defaults to leaf dir of --repo)")
+//var flDest = flag.String("dest", envString("GIT_SYNC_DEST", ""),
+//	"the name at which to publish the checked-out files under --root (defaults to leaf dir of --repo)")
 var flWait = flag.Float64("wait", envFloat("GIT_SYNC_WAIT", 0),
 	"the number of seconds between syncs")
 var flSyncTimeout = flag.Int("timeout", envInt("GIT_SYNC_TIMEOUT", 120),
@@ -201,15 +201,15 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	if *flDest == "" {
-		parts := strings.Split(strings.Trim(*flRepo, "/"), "/")
-		*flDest = parts[len(parts)-1]
-	}
-	if strings.Contains(*flDest, "/") {
-		fmt.Fprintf(os.Stderr, "ERROR: --dest must be a bare name\n")
-		flag.Usage()
-		os.Exit(1)
-	}
+	//if *flDest == "" {
+	//	parts := strings.Split(strings.Trim(*flRepo, "/"), "/")
+	//	*flDest = parts[len(parts)-1]
+	//}
+	//if strings.Contains(*flDest, "/") {
+	//	fmt.Fprintf(os.Stderr, "ERROR: --dest must be a bare name\n")
+	//	flag.Usage()
+	//	os.Exit(1)
+	//}
 	if _, err := exec.LookPath(*flGitCmd); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: git executable %q not found: %v\n", *flGitCmd, err)
 		os.Exit(1)
@@ -289,7 +289,7 @@ func main() {
 	for {
 		start := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(*flSyncTimeout))
-		if changed, err := syncRepo(ctx, *flRepo, *flBranch, *flRev, *flDepth, *flRoot, *flDest, *flSubmodule); err != nil {
+		if changed, err := syncRepo(ctx, *flRepo, *flDepth, *flRoot, *flSubmodule); err != nil {
 			syncDuration.WithLabelValues("error").Observe(time.Now().Sub(start).Seconds())
 			syncCount.WithLabelValues("error").Inc()
 			if initialSync || (*flMaxSyncFailures != -1 && failCount >= *flMaxSyncFailures) {
@@ -475,8 +475,8 @@ func addWorktreeAndSwap(ctx context.Context, gitRoot, dest, branch, rev string, 
 	return updateSymlink(ctx, gitRoot, dest, worktreePath)
 }
 
-func cloneRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot string) error {
-	args := []string{"clone", "--no-checkout", "-b", branch}
+func cloneRepo(ctx context.Context, repo string, depth int, gitRoot string) error {
+	args := []string{"clone"}
 	if depth != 0 {
 		args = append(args, "--depth", strconv.Itoa(depth))
 	}
@@ -525,41 +525,38 @@ func revIsHash(ctx context.Context, rev, gitRoot string) (bool, error) {
 
 // syncRepo syncs the branch of a given repository to the destination at the given rev.
 // returns (1) whether a change occured and (2) an error if one happened
-func syncRepo(ctx context.Context, repo, branch, rev string, depth int, gitRoot, dest string, submodule bool) (bool, error) {
-	target := path.Join(gitRoot, dest)
-	gitRepoPath := path.Join(target, ".git")
-	hash := rev
+func syncRepo(ctx context.Context, repo string, depth int, gitRoot string, submodule bool) (bool, error) {
+
+	gitRepoPath := path.Join(gitRoot, ".git")
 	_, err := os.Stat(gitRepoPath)
 	switch {
 	case os.IsNotExist(err):
-		err = cloneRepo(ctx, repo, branch, rev, depth, gitRoot)
+		err = cloneRepo(ctx, repo, depth, gitRoot)
 		if err != nil {
 			return false, err
 		}
-		hash, err = hashForRev(ctx, rev, gitRoot)
-		if err != nil {
-			return false, err
-		}
+
 	case err != nil:
 		return false, fmt.Errorf("error checking if repo exists %q: %v", gitRepoPath, err)
 	default:
-		local, remote, err := getRevs(ctx, target, branch, rev)
+		_, err := runCommand(ctx, gitRoot, *flGitCmd, "reset", "--hard")
 		if err != nil {
 			return false, err
 		}
-		log.V(0).Infof("local hash:  %s", local)
-		log.V(0).Infof("remote hash: %s", remote)
-		if local != remote {
-			log.V(0).Infof("update required")
-			hash = remote
-		} else {
-			log.V(0).Infof("no update required")
-			return false, nil
+		_, err = runCommand(ctx, gitRoot, *flGitCmd, "clean", "-dfx")
+		if err != nil {
+			return false, err
+		}
+		_, err = runCommand(ctx, gitRoot, *flGitCmd, "fetch", "--all")
+		if err != nil {
+			return false, err
 		}
 	}
 
-	return true, addWorktreeAndSwap(ctx, gitRoot, dest, branch, rev, depth, hash, submodule)
+	return false, err
 }
+
+
 
 // getRevs returns the local and upstream hashes for rev.
 func getRevs(ctx context.Context, localDir, branch, rev string) (string, string, error) {
