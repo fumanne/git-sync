@@ -16,7 +16,8 @@ RUN apk update --no-cache && apk add \
     ca-certificates \
     coreutils \
     git \
-    openssh-client
+    openssh-client \
+    netcat-openbsd
 
 RUN echo "git-sync:x:65533:65533::/tmp:/sbin/nologin" >> /etc/passwd
 
