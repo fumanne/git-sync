@@ -5,9 +5,10 @@ variables:
   BUILDARG_http_proxy: $CI_BUILDARG_HTTP_PROXY
   BUILDARG_https_proxy: $CI_BUILDARG_HTTPS_PROXY
   BUILDARG_no_proxy: $CI_BUILDARG_NO_PROXY
-  CI_REGISTRY_USER: gitlab-ci-token
-  CI_REGISTRY_PASSWORD: $CI_JOB_TOKEN
+  CI_REGISTRY_USER: devops-mirror-user
+  CI_REGISTRY_PASSWORD: $CI_REGISTRY_MIRROR_PASSWORD
   CI_REGISTRY_TAG: rawclone
+  CI_REGISTRY_IMAGE: $CI_REGISTRY/devops/mirror/git-sync
 
 stages:
   - dockerbuild
