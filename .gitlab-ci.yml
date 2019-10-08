@@ -12,7 +12,6 @@ variables:
 
 stages:
   - dockerbuild
-  - taglatest
 
 docker_build:
   stage: dockerbuild
